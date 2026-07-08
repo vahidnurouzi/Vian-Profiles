@@ -1,2 +1,61 @@
-vpnbook
+name: Update VPNBook Password
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python packages
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Fetch VPNBook password
+        run: |
+          python3 << 'EOF'
+          import re
+          import requests
+          from bs4 import BeautifulSoup
+
+          url = "https://www.vpnbook.com/freevpn"
+
+          headers = {
+              "User-Agent": "Mozilla/5.0"
+          }
+
+          html = requests.get(url, headers=headers, timeout=20).text
+
+          soup = BeautifulSoup(html, "html.parser")
+          text = soup.get_text("\n")
+
+          m = re.search(r'Password\s*[:：]?\s*([A-Za-z0-9]+)', text)
+
+          if not m:
+              raise SystemExit("Password not found")
+
+          pwd = m.group(1)
+
+          with open("vpnbook.txt", "w") as f:
+              f.write("vpnbook\n")
+              f.write(pwd + "\n")
+
+          print("Password:", pwd)
+          EOF
+
+      - name: Commit
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add vpnbook.txt
+          git diff --cached --quiet || git commit -m "Update VPNBook password"
+          git push
 
