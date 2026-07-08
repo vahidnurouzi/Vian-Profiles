@@ -1,0 +1,30 @@
+name: Update VPNBook Password
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get VPNBook password
+        run: |
+          PASS=$(curl -s https://www.vpnbook.com/freevpn/openvpn | grep -oP '(?<=Password:</strong> ).*(?=</li>)' | sed 's/<[^>]*>//g')
+          echo "vpnbook" > vpnbook.txt
+          echo "$PASS" >> vpnbook.txt
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add vpnbook.txt
+          git diff --cached --quiet || git commit -m "Update VPNBook password"
+          git push
